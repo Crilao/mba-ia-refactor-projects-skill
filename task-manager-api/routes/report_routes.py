@@ -5,6 +5,7 @@ from models.user import User
 from models.category import Category
 from datetime import datetime, timedelta
 from utils.helpers import format_date, calculate_percentage
+from utils.helpers import is_task_overdue
 import json
 
 report_bp = Blueprint('reports', __name__)
@@ -27,20 +28,17 @@ def summary_report():
     p4 = Task.query.filter_by(priority=4).count()
     p5 = Task.query.filter_by(priority=5).count()
 
-    all_tasks = Task.query.all()
     overdue_count = 0
     overdue_list = []
-    for t in all_tasks:
-        if t.due_date:
-            if t.due_date < datetime.utcnow():
-                if t.status != 'done' and t.status != 'cancelled':
-                    overdue_count = overdue_count + 1
-                    overdue_list.append({
-                        'id': t.id,
-                        'title': t.title,
-                        'due_date': str(t.due_date),
-                        'days_overdue': (datetime.utcnow() - t.due_date).days
-                    })
+    for t in Task.query.all():
+        if is_task_overdue(t):
+            overdue_count = overdue_count + 1
+            overdue_list.append({
+                'id': t.id,
+                'title': t.title,
+                'due_date': str(t.due_date),
+                'days_overdue': (datetime.utcnow() - t.due_date).days
+            })
 
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     recent_tasks = Task.query.filter(Task.created_at >= seven_days_ago).count()
@@ -129,10 +127,8 @@ def user_report(user_id):
         if t.priority <= 2:
             high_priority = high_priority + 1
 
-        if t.due_date:
-            if t.due_date < datetime.utcnow():
-                if t.status != 'done' and t.status != 'cancelled':
-                    overdue = overdue + 1
+        if is_task_overdue(t):
+            overdue = overdue + 1
 
     report = {
         'user': {

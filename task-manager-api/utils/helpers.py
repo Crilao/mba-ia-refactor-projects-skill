@@ -1,10 +1,4 @@
 from datetime import datetime
-import re
-import os
-import json
-import sys
-import math
-import hashlib
 
 def format_date(date_obj):
     if date_obj:
@@ -16,7 +10,19 @@ def calculate_percentage(part, total):
         return 0
     return round((part / total) * 100, 2)
 
+def is_task_overdue(task, reference_time=None):
+    """Return True when an open task has a past due date."""
+    if not task or not getattr(task, 'due_date', None):
+        return False
+
+    reference_time = reference_time or datetime.utcnow()
+    if task.due_date >= reference_time:
+        return False
+
+    return task.status not in ('done', 'cancelled')
+
 def validate_email(email):
+    import re
 
     if re.match(r'^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$', email):
         return True

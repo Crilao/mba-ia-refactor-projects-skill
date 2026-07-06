@@ -4,9 +4,27 @@ from models.task import Task
 from models.user import User
 from models.category import Category
 from datetime import datetime
-import json, os, sys, time
+from utils.helpers import is_task_overdue
 
 task_bp = Blueprint('tasks', __name__)
+
+
+def _task_payload(task):
+    data = task.to_dict()
+
+    if task.user_id:
+        user = User.query.get(task.user_id)
+        data['user_name'] = user.name if user else None
+    else:
+        data['user_name'] = None
+
+    if task.category_id:
+        category = Category.query.get(task.category_id)
+        data['category_name'] = category.name if category else None
+    else:
+        data['category_name'] = None
+
+    return data
 
 @task_bp.route('/tasks', methods=['GET'])
 def get_tasks():
@@ -14,49 +32,7 @@ def get_tasks():
         tasks = Task.query.all()
         result = []
         for t in tasks:
-            task_data = {}
-            task_data['id'] = t.id
-            task_data['title'] = t.title
-            task_data['description'] = t.description
-            task_data['status'] = t.status
-            task_data['priority'] = t.priority
-            task_data['user_id'] = t.user_id
-            task_data['category_id'] = t.category_id
-            task_data['created_at'] = str(t.created_at)
-            task_data['updated_at'] = str(t.updated_at)
-            task_data['due_date'] = str(t.due_date) if t.due_date else None
-            task_data['tags'] = t.tags.split(',') if t.tags else []
-
-            if t.due_date:
-                if t.due_date < datetime.utcnow():
-                    if t.status != 'done' and t.status != 'cancelled':
-                        task_data['overdue'] = True
-                    else:
-                        task_data['overdue'] = False
-                else:
-                    task_data['overdue'] = False
-            else:
-                task_data['overdue'] = False
-
-            if t.user_id:
-                user = User.query.get(t.user_id)
-                if user:
-                    task_data['user_name'] = user.name
-                else:
-                    task_data['user_name'] = None
-            else:
-                task_data['user_name'] = None
-
-            if t.category_id:
-                cat = Category.query.get(t.category_id)
-                if cat:
-                    task_data['category_name'] = cat.name
-                else:
-                    task_data['category_name'] = None
-            else:
-                task_data['category_name'] = None
-
-            result.append(task_data)
+            result.append(_task_payload(t))
 
         return jsonify(result), 200
     except:
@@ -66,19 +42,7 @@ def get_tasks():
 def get_task(task_id):
     task = Task.query.get(task_id)
     if task:
-        data = task.to_dict()
-
-        if task.due_date:
-            if task.due_date < datetime.utcnow():
-                if task.status != 'done' and task.status != 'cancelled':
-                    data['overdue'] = True
-                else:
-                    data['overdue'] = False
-            else:
-                data['overdue'] = False
-        else:
-            data['overdue'] = False
-        return jsonify(data), 200
+        return jsonify(_task_payload(task)), 200
     else:
         return jsonify({'error': 'Task não encontrada'}), 404
 
@@ -266,7 +230,7 @@ def search_tasks():
     results = tasks.all()
     output = []
     for t in results:
-        output.append(t.to_dict())
+        output.append(_task_payload(t))
 
     return jsonify(output), 200
 
@@ -278,13 +242,10 @@ def task_stats():
     done = Task.query.filter_by(status='done').count()
     cancelled = Task.query.filter_by(status='cancelled').count()
 
-    all_tasks = Task.query.all()
     overdue_count = 0
-    for t in all_tasks:
-        if t.due_date:
-            if t.due_date < datetime.utcnow():
-                if t.status != 'done' and t.status != 'cancelled':
-                    overdue_count = overdue_count + 1
+    for t in Task.query.all():
+        if is_task_overdue(t):
+            overdue_count = overdue_count + 1
 
     stats = {
         'total': total,

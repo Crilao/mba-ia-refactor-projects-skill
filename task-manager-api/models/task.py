@@ -1,6 +1,6 @@
 from database import db
 from datetime import datetime
-import json
+from utils.helpers import is_task_overdue
 
 class Task(db.Model):
     __tablename__ = 'tasks'
@@ -33,6 +33,7 @@ class Task(db.Model):
         data['updated_at'] = str(self.updated_at)
         data['due_date'] = str(self.due_date) if self.due_date else None
         data['tags'] = self.tags.split(',') if self.tags else []
+        data['overdue'] = is_task_overdue(self)
         return data
 
     def validate_status(self, new_status):
@@ -48,13 +49,4 @@ class Task(db.Model):
         return False
 
     def is_overdue(self):
-        if self.due_date:
-            if self.due_date < datetime.utcnow():
-                if self.status != 'done' and self.status != 'cancelled':
-                    return True
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
+        return is_task_overdue(self)

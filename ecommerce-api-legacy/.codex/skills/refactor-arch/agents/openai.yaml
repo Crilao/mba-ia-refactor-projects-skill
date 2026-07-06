@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor Arch"
+  short_description: "Audita e refatora legados para MVC"
+  default_prompt: "Use $refactor-arch to analyze, audit, and refactor this codebase into MVC."

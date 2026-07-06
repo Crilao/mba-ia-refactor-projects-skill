@@ -446,3 +446,136 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
 - **Projetos diferentes exigem adaptação** — a Fase 3 de um projeto já parcialmente organizado não vai ter as mesmas transformações de um monolito. Sua skill deve se adaptar ao contexto.
 - **Pedir confirmação na Fase 2 é obrigatório** — o humano deve revisar o relatório antes de qualquer modificação.
 - **Consulte as referências do curso** — revise a documentação oficial da ferramenta escolhida e os materiais das aulas para relembrar a estrutura e anatomia de uma skill.
+
+
+## Análise Manual
+
+### 1) `code-smells-project/` - Python/Flask
+
+| Severidade | Achado | Evidência | Por que importa |
+|---|---|---|---|
+| CRITICAL | SQL Injection em consultas montadas por concatenação | `models.py:28-29`, `47-50`, `57-61`, `68`, `109-110`, `127-128`, `140-166`, `174`, `188`, `192`, `206`, `220`, `280`, `289-299` | Qualquer entrada controlada pelo usuário pode alterar a SQL executada. |
+| CRITICAL | Endpoint que executa SQL arbitrário | `app.py:59-78` | Expõe a base inteira a leitura e alterações sem controle. |
+| CRITICAL | Senhas armazenadas em texto puro e expostas nas respostas | `models.py:72-85`, `89-119`, `122-130`; `controllers.py:128-162` | Credenciais reais ficam vulneráveis à leitura e ao vazamento pela própria API. |
+| HIGH | `SECRET_KEY` hardcoded e `DEBUG=True` | `app.py:7-8`, `80-88` | Segredo fixo e debug habilitado aumentam o risco de vazamento e abuso, mas não expõem um sistema externo por si só. |
+| MEDIUM | Fluxo de pedido sem transação/rollback | `models.py:133-169` | Uma falha no meio do processo pode deixar itens, pedido e estoque inconsistentes. |
+| MEDIUM | Validações repetidas nos controllers | `controllers.py:24-58`, `64-93`, `146-183`, `188-250` | Regras duplicadas aumentam chance de divergência e retrabalho. |
+| LOW | Uso de `print` para log operacional | `controllers.py:8`, `57`, `106`, `161`, `179`, `208-210`, `248-250` | Dificulta observabilidade e padronização de logs. |
+| LOW | Imports e estrutura pouco limpos | `database.py:1-3` | Mostra acumulação de código legado e manutenção manual fraca. |
+
+### 2) `ecommerce-api-legacy/` - Node.js/Express
+
+| Severidade | Achado | Evidência | Por que importa |
+|---|---|---|---|
+| CRITICAL | Segredos e credenciais hardcoded | `src/utils.js:1-6` | Banco, gateway de pagamento e SMTP ficam expostos no código-fonte e podem ser usados fora do sistema. |
+| CRITICAL | Dados sensíveis do cartão e da chave logados | `src/AppManager.js:45-47` | Logs podem vazar informações de pagamento e credenciais com impacto imediato. |
+| HIGH | Pagamento simulado por regra frágil | `src/AppManager.js:43-48` | A compra é aprovada apenas pelo prefixo do cartão, sem validação real. |
+| MEDIUM | `AppManager` concentra schema, rotas e regras | `src/AppManager.js:4-138` | A classe vira um god object e dificulta evoluir para MVC. |
+| MEDIUM | Banco em memória apaga tudo ao reiniciar | `src/AppManager.js:7`, `10-22` | A API não persiste estado entre boots, o que quebra a expectativa de uma aplicação legada. |
+| MEDIUM | Exclusão de usuário deixa dados órfãos | `src/AppManager.js:131-136` | Enrollment e payment continuam no banco sem consistência. |
+| LOW | Nomes abreviados e pouco expressivos | `src/AppManager.js:29-33`, `43-46` | Reduz legibilidade do fluxo. |
+| LOW | Estado global mutável e export morto | `src/utils.js:9-10`, `25` | Indica acoplamento implícito e código não utilizado. |
+
+### 3) `task-manager-api/` - Python/Flask
+
+| Severidade | Achado | Evidência | Por que importa |
+|---|---|---|---|
+| HIGH | `password` salvo com MD5 e retornado no `to_dict` | `models/user.py:16-32` | Hash fraco e vazamento de credenciais na resposta da API. |
+| HIGH | Sem autenticação/autorização nos endpoints destrutivos | `routes/user_routes.py:134-151`, `routes/task_routes.py:225-238`, `routes/report_routes.py:190-223` | Qualquer cliente pode apagar dados sem controle de acesso. |
+| HIGH | `SECRET_KEY` hardcoded | `app.py:11-13` | Segredo fixo enfraquece a segurança do app, mas não chega ao nível de credencial externa exposta. |
+| MEDIUM | Lógica de overdue duplicada em vários pontos | `models/task.py:42-58`, `routes/user_routes.py:171-180`, `routes/task_routes.py:30-39`, `65-80`, `report_routes.py:33-43`, `119-136` | A mesma regra aparece repetida e pode divergir com facilidade. |
+| MEDIUM | N+1 queries em listagens e relatórios | `routes/task_routes.py:14-58`, `routes/report_routes.py:53-68`, `157-164` | Cresce mal conforme o volume de dados aumenta. |
+| MEDIUM | `db.create_all()` no boot sem migrações | `app.py:30-31` | O schema é criado automaticamente, sem estratégia de evolução. |
+| LOW | Imports e dependências internas não utilizadas | `app.py:7`, `models/task.py:1-3`, `routes/task_routes.py:7`, `utils/helpers.py:3-7` | Sinal de código sobrando e manutenção pouco rigorosa. |
+| LOW | Serviço de notificação com credenciais hardcoded | `services/notification_service.py:4-18` | A configuração sensível fica presa no source e dificulta troca de ambiente. |
+## Resultados
+
+### Projeto 1 - `code-smells-project`
+
+**Antes**
+
+- Mon�lito em arquivos soltos na raiz.
+- `SECRET_KEY` hardcoded e `DEBUG=True`.
+- SQL concatenado e endpoint de SQL arbitr�rio.
+- Senhas em texto puro e expostas nas respostas.
+
+**Depois**
+
+- Estrutura `src/` com configura��o, banco, reposit�rios, services, controllers e rotas.
+- `app.py` virou composition root.
+- SQL parametrizado.
+- Senhas passaram a usar hash seguro.
+- Endpoints administrativos ficaram protegidos por token.
+
+**Valida��o**
+
+- `python -m compileall code-smells-project/src code-smells-project/app.py`
+- Smoke test:
+  - `/` -> `200`
+  - `/health` -> `200`
+  - `/produtos` -> `200`
+  - `/usuarios` -> `200`
+  - `/pedidos` -> `200`
+  - `/relatorios/vendas` -> `200`
+- Fluxo b�sico validado:
+  - `POST /produtos` -> `201`
+  - `POST /login` -> `200`
+  - `DELETE /produtos/<id>` -> `200`
+
+### Projeto 2 - `ecommerce-api-legacy`
+
+**Antes**
+
+- `AppManager` concentrava schema, seed, rotas e regras de neg�cio.
+- Banco em mem�ria.
+- Credenciais hardcoded em `utils.js`.
+- Checkout com callbacks aninhados e log de dados sens�veis.
+
+**Depois**
+
+- Estrutura separada em `config`, `database`, `repositories`, `services`, `controllers`, `routes` e `appFactory`.
+- `src/app.js` virou bootstrap ass�ncrono.
+- Fluxo de checkout foi extra�do para service.
+- Relat�rio financeiro foi isolado em camada pr�pria.
+
+**Valida��o**
+
+- `node --check` em todos os m�dulos novos.
+- Smoke test real em porta aleat�ria:
+  - `POST /api/checkout` -> `200`
+  - `GET /api/admin/financial-report` -> `200`
+  - `DELETE /api/users/1` -> `200`
+
+### Observa��es
+
+- Os dois projetos j� mostram que a skill consegue funcionar em stacks diferentes.
+- O pr�ximo passo � repetir o mesmo processo no `task-manager-api`, que j� tem alguma separa��o de camadas e deve exigir menos reorganiza��o estrutural, mas ainda precisa de limpeza de seguran�a e consist�ncia.
+
+### 3) `task-manager-api/` - Python/Flask
+
+**Antes**
+
+- Senhas com MD5 e expostas nas respostas da API.
+- `SECRET_KEY` hardcoded em `app.py`.
+- Regras de `overdue` duplicadas em modelos e rotas.
+- Credenciais de SMTP hardcoded no serviço de notificação.
+
+**Depois**
+
+- Senhas passaram a usar hash seguro do Werkzeug.
+- `password` saiu das respostas serializadas.
+- A lógica de `overdue` foi centralizada em `utils/helpers.py`.
+- A configuração sensível passou a vir de variáveis de ambiente.
+- Os endpoints de listagem passaram a reutilizar o mesmo payload serializado.
+
+**Validação**
+
+- `python -m compileall task-manager-api`
+- Smoke test manual da API após `seed.py`:
+  - `/` -> `200`
+  - `/health` -> `200`
+  - `/users` -> `200`
+  - `/tasks` -> `200`
+  - `/reports/summary` -> `200`
+  - `/categories` -> `200`
+- O projeto continuou respondendo normalmente após a refatoração, com a remoção dos vazamentos mais críticos.

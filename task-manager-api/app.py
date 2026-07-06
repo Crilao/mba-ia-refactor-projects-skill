@@ -1,16 +1,19 @@
+import os
+
 from flask import Flask
 from flask_cors import CORS
 from database import db
 from routes.task_routes import task_bp
 from routes.user_routes import user_bp
 from routes.report_routes import report_bp
-import os, sys, json, datetime
+import datetime
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///tasks.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'super-secret-key-123'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-only-change-me')
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
 
 CORS(app)
 db.init_app(app)
@@ -31,4 +34,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=app.config['DEBUG'], host='0.0.0.0', port=int(os.getenv('PORT', '5000')))

@@ -2,8 +2,7 @@ from flask import Blueprint, request, jsonify
 from database import db
 from models.user import User
 from models.task import Task
-from datetime import datetime
-import hashlib, json, re
+import re
 
 user_bp = Blueprint('users', __name__)
 
@@ -19,7 +18,7 @@ def get_users():
             'role': u.role,
             'active': u.active,
             'created_at': str(u.created_at),
-            'task_count': len(u.tasks)
+            'task_count': Task.query.filter_by(user_id=u.id).count()
         }
         result.append(user_data)
     return jsonify(result), 200
@@ -159,26 +158,7 @@ def get_user_tasks(user_id):
     tasks = Task.query.filter_by(user_id=user_id).all()
     result = []
     for t in tasks:
-        task_data = {}
-        task_data['id'] = t.id
-        task_data['title'] = t.title
-        task_data['description'] = t.description
-        task_data['status'] = t.status
-        task_data['priority'] = t.priority
-        task_data['created_at'] = str(t.created_at)
-        task_data['due_date'] = str(t.due_date) if t.due_date else None
-
-        if t.due_date:
-            if t.due_date < datetime.utcnow():
-                if t.status != 'done' and t.status != 'cancelled':
-                    task_data['overdue'] = True
-                else:
-                    task_data['overdue'] = False
-            else:
-                task_data['overdue'] = False
-        else:
-            task_data['overdue'] = False
-        result.append(task_data)
+        result.append(t.to_dict())
 
     return jsonify(result), 200
 
