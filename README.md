@@ -494,20 +494,20 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
 
 **Antes**
 
-- Mon�lito em arquivos soltos na raiz.
+- Monolito em arquivos soltos na raiz.
 - `SECRET_KEY` hardcoded e `DEBUG=True`.
-- SQL concatenado e endpoint de SQL arbitr�rio.
+- SQL concatenado e endpoint de SQL arbitrário.
 - Senhas em texto puro e expostas nas respostas.
 
 **Depois**
 
-- Estrutura `src/` com configura��o, banco, reposit�rios, services, controllers e rotas.
+- Estrutura `src/` com configuração, banco, repositórios, services, controllers e rotas.
 - `app.py` virou composition root.
 - SQL parametrizado.
 - Senhas passaram a usar hash seguro.
 - Endpoints administrativos ficaram protegidos por token.
 
-**Valida��o**
+**Validação**
 
 - `python -m compileall code-smells-project/src code-smells-project/app.py`
 - Smoke test:
@@ -517,7 +517,7 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
   - `/usuarios` -> `200`
   - `/pedidos` -> `200`
   - `/relatorios/vendas` -> `200`
-- Fluxo b�sico validado:
+- Fluxo básico validado:
   - `POST /produtos` -> `201`
   - `POST /login` -> `200`
   - `DELETE /produtos/<id>` -> `200`
@@ -526,30 +526,30 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
 
 **Antes**
 
-- `AppManager` concentrava schema, seed, rotas e regras de neg�cio.
-- Banco em mem�ria.
+- `AppManager` concentrava schema, seed, rotas e regras de negócio.
+- Banco em memória.
 - Credenciais hardcoded em `utils.js`.
-- Checkout com callbacks aninhados e log de dados sens�veis.
+- Checkout com callbacks aninhados e log de dados sensíveis.
 
 **Depois**
 
 - Estrutura separada em `config`, `database`, `repositories`, `services`, `controllers`, `routes` e `appFactory`.
-- `src/app.js` virou bootstrap ass�ncrono.
-- Fluxo de checkout foi extra�do para service.
-- Relat�rio financeiro foi isolado em camada pr�pria.
+- `src/app.js` virou bootstrap assíncrono.
+- Fluxo de checkout foi extraído para service.
+- Relatório financeiro foi isolado em camada própria.
 
-**Valida��o**
+**Validação**
 
-- `node --check` em todos os m�dulos novos.
-- Smoke test real em porta aleat�ria:
+- `node --check` em todos os módulos novos.
+- Smoke test real em porta aleatória:
   - `POST /api/checkout` -> `200`
   - `GET /api/admin/financial-report` -> `200`
   - `DELETE /api/users/1` -> `200`
 
-### Observa��es
+### Observações
 
-- Os dois projetos j� mostram que a skill consegue funcionar em stacks diferentes.
-- O pr�ximo passo � repetir o mesmo processo no `task-manager-api`, que j� tem alguma separa��o de camadas e deve exigir menos reorganiza��o estrutural, mas ainda precisa de limpeza de seguran�a e consist�ncia.
+- Os dois projetos já mostram que a skill consegue funcionar em stacks diferentes.
+- O próximo passo é repetir o mesmo processo no `task-manager-api`, que já tem alguma separação de camadas e deve exigir menos reorganização estrutural, mas ainda precisa de limpeza de segurança e consistência.
 
 ### 3) `task-manager-api/` - Python/Flask
 
