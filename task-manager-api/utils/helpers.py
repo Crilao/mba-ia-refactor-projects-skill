@@ -1,4 +1,8 @@
 from datetime import datetime
+import os
+import logging
+
+from flask import jsonify, request
 
 def format_date(date_obj):
     if date_obj:
@@ -42,9 +46,9 @@ def generate_id():
 def log_action(action, details=None):
 
     timestamp = datetime.utcnow()
-    print(f"[{timestamp}] ACTION: {action}")
+    logger.info('[%s] ACTION: %s', timestamp, action)
     if details:
-        print(f"  DETAILS: {details}")
+        logger.info('  DETAILS: %s', details)
 
 def parse_date(date_string):
     try:
@@ -113,6 +117,19 @@ def process_task_data(data, existing_task=None):
 
     return result, None
 
+
+def is_admin_request():
+    token = request.headers.get('X-Admin-Token', '')
+    if not token and request.is_json:
+        token = (request.get_json(silent=True) or {}).get('token', '')
+    return token == os.getenv('ADMIN_TOKEN', '')
+
+
+def require_admin():
+    if is_admin_request():
+        return None
+    return jsonify({'error': 'Nao autorizado'}), 401
+
 VALID_STATUSES = ['pending', 'in_progress', 'done', 'cancelled']
 VALID_ROLES = ['user', 'admin', 'manager']
 MAX_TITLE_LENGTH = 200
@@ -120,3 +137,4 @@ MIN_TITLE_LENGTH = 3
 MIN_PASSWORD_LENGTH = 4
 DEFAULT_PRIORITY = 3
 DEFAULT_COLOR = '#000000'
+logger = logging.getLogger(__name__)

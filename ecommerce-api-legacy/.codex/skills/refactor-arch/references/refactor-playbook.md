@@ -1,77 +1,77 @@
-# Playbook de Refatoração
+# Refactor Playbook
 
-## Sumário
+## Summary
 
-1. [SQL concatenado](#sql-concatenado)
-2. [Config hardcoded](#config-hardcoded)
-3. [Controller gordo](#controller-gordo)
-4. [Senha fraca ou exposta](#senha-fraca-ou-exposta)
-5. [Validação duplicada](#validacao-duplicada)
-6. [N+1 queries](#n1-queries)
-7. [Estado global mutável](#estado-global-mutavel)
-8. [Endpoint destrutivo sem proteção](#endpoint-destrutivo-sem-protecao)
-9. [API depreciada](#api-depreciada)
+1. SQL concatenation
+2. Hardcoded config
+3. Sensitive data in logs
+4. Weak or exposed password handling
+5. Duplicated validation
+6. N+1 queries
+7. Mutable global state
+8. Destructive endpoint without protection
+9. Deprecated API usage
 
-## SQL concatenado
+## SQL concatenation
 
-Antes:
+Before:
 
 ```py
 cursor.execute("SELECT * FROM users WHERE email = '" + email + "'")
 ```
 
-Depois:
+After:
 
 ```py
 cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
 ```
 
-## Config hardcoded
+## Hardcoded config
 
-Antes:
+Before:
 
 ```js
 const port = 3000;
 const secret = "hardcoded";
 ```
 
-Depois:
+After:
 
 ```js
 const port = Number(process.env.PORT ?? 3000);
 const secret = process.env.SECRET_KEY;
 ```
 
-## Controller gordo
+## Sensitive data in logs
 
-Antes:
+Before:
 
-```py
-@bp.post("/tasks")
-def create():
-    data = request.get_json()
-    # validação, regra, persistência, resposta
+```js
+console.log(`Processing card ${card} with gateway key ${gatewayKey}`);
 ```
 
-Depois:
+After:
 
-```py
-@bp.post("/tasks")
-def create():
-    task = task_controller.create(request.get_json())
-    return jsonify(task), 201
+```js
+console.info('Checkout in progress', {
+  userId,
+  courseId,
+});
 ```
 
-## Senha fraca ou exposta
+- Never log card numbers, passwords, tokens, gateway keys, or plaintext credentials.
+- If context is required, log only non-sensitive metadata and mask values when needed.
 
-Antes:
+## Weak or exposed password handling
+
+Before:
 
 ```py
 user.password = password
 return user.to_dict()
 ```
 
-Depois:
+After:
 
 ```py
 user.password = generate_password_hash(password)
@@ -80,18 +80,30 @@ data.pop("password", None)
 return data
 ```
 
-## Validação duplicada
+Node.js example:
 
-Antes:
+```js
+const bcrypt = require('bcryptjs');
+const hash = await bcrypt.hash(password, 12);
+```
+
+If the project already uses `argon2`, prefer `argon2.hash(password)` and `argon2.verify(hash, password)`.
+
+- Never keep `badCrypto`, MD5, SHA1, or homegrown password hashing.
+- Every password creation or update must use a secure salted hash.
+
+## Duplicated validation
+
+Before:
 
 ```py
 if not title or len(title) < 3:
-    return error("Título inválido")
+    return error("Invalid title")
 if not description:
     description = ""
 ```
 
-Depois:
+After:
 
 ```py
 payload, error = validate_task_payload(request.get_json())
@@ -101,38 +113,38 @@ if error:
 
 ## N+1 queries
 
-Antes:
+Before:
 
 ```py
 for task in tasks:
     user = User.query.get(task.user_id)
 ```
 
-Depois:
+After:
 
 ```py
 tasks = Task.query.options(joinedload(Task.user)).all()
 ```
 
-## Estado global mutável
+## Mutable global state
 
-Antes:
+Before:
 
 ```js
 let cache = {};
 cache[key] = value;
 ```
 
-Depois:
+After:
 
 ```js
 const cacheStore = new CacheStore();
 cacheStore.set(key, value);
 ```
 
-## Endpoint destrutivo sem proteção
+## Destructive endpoint without protection
 
-Antes:
+Before:
 
 ```py
 @app.delete("/users/<int:id>")
@@ -140,7 +152,7 @@ def delete_user(id):
     ...
 ```
 
-Depois:
+After:
 
 ```py
 @admin_required
@@ -149,24 +161,25 @@ def delete_user(id):
     ...
 ```
 
-## API depreciada
+## Deprecated API usage
 
-Antes:
+Before:
 
 ```py
 user = User.query.get(user_id)
 ```
 
-Depois:
+After:
 
 ```py
 user = db.session.get(User, user_id)
 ```
 
-## Como aplicar o playbook
+## How to apply the playbook
 
-- Corrigir a causa raiz, não só o sintoma.
-- Preservar contratos públicos.
-- Refatorar em pequenos passos verificáveis.
-- Validar cada mudança com boot e endpoints principais.
-
+- Fix the root cause, not just the symptom.
+- Preserve public contracts.
+- Refactor in small verifiable steps.
+- Validate each change with boot and the main endpoints.
+- If Phase 2 found a smell, Phase 3 must apply the matching transformation before any cosmetic cleanup.
+- Re-run the audit after each change set to confirm critical findings are gone.

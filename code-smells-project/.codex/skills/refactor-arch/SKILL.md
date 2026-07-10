@@ -1,49 +1,50 @@
 ---
 name: refactor-arch
-description: Audite e refatore codebases legadas para MVC em três fases. Use quando precisar detectar stack, arquitetura, anti-patterns, linhas exatas de problemas, gerar relatório de auditoria ou reestruturar backends em Python/Flask, Node/Express ou stacks semelhantes.
+description: Audit and refactor legacy codebases in three phases. Use when you need stack detection, architecture mapping, anti-pattern findings, exact line references, audit reports, or MVC-style backend refactors in Python/Flask, Node/Express, or similar stacks.
 ---
 
 # Refactor Arch
 
-## Visão geral
+## Overview
 
-Use esta skill para inspecionar uma codebase legada, produzir uma auditoria reproduzível e depois refatorar o projeto para um MVC mais limpo sem quebrar o comportamento existente.
+Use this skill to inspect a legacy codebase, produce a reproducible audit, and then refactor the project toward a cleaner MVC structure without breaking observable behavior.
 
-## Fases
+## Phases
 
-### Fase 1 - Análise
+### Phase 1 - Analysis
 
-1. Identifique linguagem, framework, banco, ponto de entrada e domínio da aplicação.
-2. Mapeie a arquitetura atual: rotas, controllers, models, serviços, utilitários e acoplamentos.
-3. Registre o resumo antes de editar qualquer arquivo.
-4. Consulte [project-analysis.md](references/project-analysis.md) para heurísticas e sinais.
+1. Identify language, framework, database, entry point, and application domain.
+2. Map the current architecture: routes, controllers, models, services, utilities, and coupling.
+3. Record the summary before editing any file.
+4. Read `references/project-analysis.md` for heuristics and signals.
 
-### Fase 2 - Auditoria
+### Phase 2 - Audit
 
-1. Cruze o código com [anti-pattern-catalog.md](references/anti-pattern-catalog.md).
-2. Classifique cada finding com severidade, arquivo e linhas exatas.
-3. Gere o relatório seguindo [audit-report-template.md](references/audit-report-template.md).
-4. Pare e peça confirmação explícita antes de alterar qualquer arquivo.
+1. Cross the code against `references/anti-pattern-catalog.md`.
+2. Classify each finding with severity, file, and exact line references.
+3. Generate the report using `references/audit-report-template.md`.
+4. Stop and ask for explicit confirmation before modifying any file.
 
-### Fase 3 - Refatoração
+### Phase 3 - Refactor
 
-1. Use [mvc-guidelines.md](references/mvc-guidelines.md) como alvo estrutural.
-2. Aplique as transformações do [refactor-playbook.md](references/refactor-playbook.md).
-3. Preserve endpoints e comportamento observável sempre que possível.
-4. Valide boot da aplicação e os endpoints principais após as mudanças.
+1. Use `references/mvc-guidelines.md` as the structural target.
+2. Turn each Phase 2 finding into a concrete code change before any cosmetic cleanup.
+3. Apply the transformations in `references/refactor-playbook.md` for each smell found, including security, sensitive logs, and secure password hashing.
+4. Preserve endpoints and observable behavior whenever possible.
+5. Validate application boot and the main endpoints after the changes.
 
-## Regras de decisão
+## Decision Rules
 
-- Priorize findings que afetem segurança, integridade, autenticação, dados sensíveis ou execução arbitrária.
-- Se houver dúvida entre duas severidades, escolha a mais alta quando houver risco de vazamento, corrupção de dados ou compromisso de acesso.
-- Não refatore sem evidência concreta. Se o problema parecer possível, confirme no código antes de registrar no relatório.
-- Não misture relatório e refatoração. A Fase 2 deve terminar antes de qualquer edição.
+- Prioritize findings that affect security, integrity, authentication, sensitive data, or arbitrary execution.
+- If two severities are in doubt, choose the higher one when there is risk of leak, data corruption, or access compromise.
+- Do not refactor without concrete evidence. If the problem seems possible, confirm it in code before recording it in the report.
+- Do not mix report writing and refactoring. Phase 2 must end before any edit.
+- Phase 3 must not finish while critical Phase 2 findings still exist in code.
 
-## Quando ler os recursos
+## When to Read Resources
 
-- Leia `references/project-analysis.md` no início de qualquer projeto novo.
-- Leia `references/anti-pattern-catalog.md` para classificar severidade e sinais de detecção.
-- Leia `references/audit-report-template.md` para padronizar a saída da Fase 2.
-- Leia `references/mvc-guidelines.md` antes de mover código entre camadas.
-- Leia `references/refactor-playbook.md` quando precisar transformar um smell específico em código MVC.
-
+- Read `references/project-analysis.md` at the start of any new project.
+- Read `references/anti-pattern-catalog.md` to classify severity and detection signals.
+- Read `references/audit-report-template.md` to standardize Phase 2 output.
+- Read `references/mvc-guidelines.md` before moving code between layers.
+- Read `references/refactor-playbook.md` when transforming a specific smell into MVC code.

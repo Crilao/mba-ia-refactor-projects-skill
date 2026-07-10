@@ -1,47 +1,48 @@
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import joinedload
+
 from database import db
-from models.user import User
 from models.task import Task
+from models.user import User
+from utils.helpers import require_admin
 import re
 
 user_bp = Blueprint('users', __name__)
 
+
 @user_bp.route('/users', methods=['GET'])
 def get_users():
-    users = User.query.all()
+    users = User.query.options(joinedload(User.tasks)).all()
     result = []
     for u in users:
-        user_data = {
-            'id': u.id,
-            'name': u.name,
-            'email': u.email,
-            'role': u.role,
-            'active': u.active,
-            'created_at': str(u.created_at),
-            'task_count': Task.query.filter_by(user_id=u.id).count()
-        }
-        result.append(user_data)
+        result.append(
+            {
+                'id': u.id,
+                'name': u.name,
+                'email': u.email,
+                'role': u.role,
+                'active': u.active,
+                'created_at': str(u.created_at),
+                'task_count': len(u.tasks),
+            }
+        )
     return jsonify(result), 200
+
 
 @user_bp.route('/users/<int:user_id>', methods=['GET'])
 def get_user(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'Usuário não encontrado'}), 404
 
     data = user.to_dict()
-
-    tasks = Task.query.filter_by(user_id=user_id).all()
-    data['tasks'] = []
-    for t in tasks:
-        data['tasks'].append(t.to_dict())
-
+    data['tasks'] = [task.to_dict() for task in user.tasks]
     return jsonify(data), 200
+
 
 @user_bp.route('/users', methods=['POST'])
 def create_user():
     data = request.get_json()
-
     if not data:
         return jsonify({'error': 'Dados inválidos'}), 400
 
@@ -79,18 +80,15 @@ def create_user():
     try:
         db.session.add(user)
         db.session.commit()
-        print(f"Usuário criado: {user.id} - {user.name}")
-
-        response_data = user.to_dict()
-        return jsonify(response_data), 201
-    except Exception as e:
+        return jsonify(user.to_dict()), 201
+    except Exception:
         db.session.rollback()
-        print(f"ERRO: {str(e)}")
         return jsonify({'error': 'Erro ao criar usuário'}), 500
+
 
 @user_bp.route('/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'Usuário não encontrado'}), 404
 
@@ -126,13 +124,18 @@ def update_user(user_id):
     try:
         db.session.commit()
         return jsonify(user.to_dict()), 200
-    except:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Erro ao atualizar'}), 500
 
+
 @user_bp.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    user = User.query.get(user_id)
+    denied = require_admin()
+    if denied:
+        return denied
+
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'Usuário não encontrado'}), 404
 
@@ -143,24 +146,19 @@ def delete_user(user_id):
     try:
         db.session.delete(user)
         db.session.commit()
-        print(f"Usuário deletado: {user_id}")
         return jsonify({'message': 'Usuário deletado com sucesso'}), 200
-    except:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Erro ao deletar'}), 500
 
+
 @user_bp.route('/users/<int:user_id>/tasks', methods=['GET'])
 def get_user_tasks(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'Usuário não encontrado'}), 404
+    return jsonify([t.to_dict() for t in user.tasks]), 200
 
-    tasks = Task.query.filter_by(user_id=user_id).all()
-    result = []
-    for t in tasks:
-        result.append(t.to_dict())
-
-    return jsonify(result), 200
 
 @user_bp.route('/login', methods=['POST'])
 def login():
@@ -184,8 +182,10 @@ def login():
     if not user.active:
         return jsonify({'error': 'Usuário inativo'}), 403
 
-    return jsonify({
-        'message': 'Login realizado com sucesso',
-        'user': user.to_dict(),
-        'token': 'fake-jwt-token-' + str(user.id)
-    }), 200
+    return jsonify(
+        {
+            'message': 'Login realizado com sucesso',
+            'user': user.to_dict(),
+            'token': 'fake-jwt-token-' + str(user.id),
+        }
+    ), 200

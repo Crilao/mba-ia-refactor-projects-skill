@@ -1,21 +1,5 @@
-const { Buffer } = require('buffer');
-const config = require('./config');
 const repo = require('./repositories');
-
-const globalCache = {};
-
-function logAndCache(key, data) {
-  console.log(`[LOG] Salvando no cache: ${key}`);
-  globalCache[key] = data;
-}
-
-function badCrypto(pwd) {
-  let hash = '';
-  for (let i = 0; i < 10000; i += 1) {
-    hash += Buffer.from(pwd).toString('base64').substring(0, 2);
-  }
-  return hash.substring(0, 10);
-}
+const { hashPassword, logAndCache, globalCache } = require('./utils');
 
 async function processCheckout({ usr, eml, pwd, c_id: courseId, card }) {
   if (!usr || !eml || !courseId || !card) {
@@ -31,11 +15,14 @@ async function processCheckout({ usr, eml, pwd, c_id: courseId, card }) {
   let userId = user && user.id;
 
   if (!userId) {
-    const hash = badCrypto(pwd || '123456');
+    if (!pwd) {
+      return { status: 400, body: 'Senha obrigatoria' };
+    }
+    const hash = hashPassword(pwd);
     userId = await repo.createUser(usr, eml, hash);
   }
 
-  console.log(`Processando cartão ${card} na chave ${config.paymentGatewayKey}`);
+  console.info('Checkout em processamento', { userId, courseId });
   const paymentStatus = card.startsWith('4') ? 'PAID' : 'DENIED';
   if (paymentStatus === 'DENIED') {
     return { status: 400, body: 'Pagamento recusado' };
@@ -87,7 +74,6 @@ module.exports = {
   getFinancialReport,
   deleteUserAndKeepAudit,
   logAndCache,
-  badCrypto,
+  hashPassword,
   globalCache,
 };
-

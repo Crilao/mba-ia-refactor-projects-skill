@@ -1,6 +1,9 @@
 import smtplib
 from datetime import datetime
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 class NotificationService:
     def __init__(self):
@@ -13,7 +16,7 @@ class NotificationService:
     def send_email(self, to, subject, body):
         try:
             if not self.email_user or not self.email_password:
-                print('Configuração de SMTP ausente; email não enviado')
+                logger.info('Configuracao de SMTP ausente; email nao enviado')
                 return False
 
             server = smtplib.SMTP(self.email_host, self.email_port)
@@ -22,10 +25,10 @@ class NotificationService:
             message = f"Subject: {subject}\n\n{body}"
             server.sendmail(self.email_user, to, message)
             server.quit()
-            print(f"Email enviado para {to}")
+            logger.info('Email enviado para %s', to)
             return True
         except Exception as e:
-            print(f"Erro ao enviar email: {str(e)}")
+            logger.error('Erro ao enviar email: %s', str(e))
             return False
 
     def notify_task_assigned(self, user, task):
