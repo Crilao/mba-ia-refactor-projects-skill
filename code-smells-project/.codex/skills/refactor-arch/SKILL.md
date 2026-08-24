@@ -30,8 +30,9 @@ Use this skill to inspect a legacy codebase, produce a reproducible audit, and t
 1. Use `references/mvc-guidelines.md` as the structural target.
 2. Turn each Phase 2 finding into a concrete code change before any cosmetic cleanup.
 3. Apply the transformations in `references/refactor-playbook.md` for each smell found, including security, sensitive logs, and secure password hashing.
-4. Preserve endpoints and observable behavior whenever possible.
-5. Validate application boot and the main endpoints after the changes.
+4. Remove dead code and legacy files that are no longer reachable from the bootstrap or import graph.
+5. Preserve endpoints and observable behavior whenever possible.
+6. Validate application boot and the main endpoints after the changes.
 
 ## Decision Rules
 
@@ -40,6 +41,7 @@ Use this skill to inspect a legacy codebase, produce a reproducible audit, and t
 - Do not refactor without concrete evidence. If the problem seems possible, confirm it in code before recording it in the report.
 - Do not mix report writing and refactoring. Phase 2 must end before any edit.
 - Phase 3 must not finish while critical Phase 2 findings still exist in code.
+- Phase 3 must not leave behind obsolete entrypoints or dead code once their lack of references is proven.
 
 ## When to Read Resources
 

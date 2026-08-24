@@ -26,7 +26,7 @@ Cada finding deve ter:
 | Validação duplicada ou espalhada | MEDIUM | `if` repetidos em vários handlers | Centralizar validação em helpers/schemas |
 | API depreciada/legada | MEDIUM | uso de métodos marcados como legacy/deprecated | Trocar pela API moderna documentada |
 | Logging por `print` em produção | LOW | `print()` para rastreamento operacional | Usar logger estruturado com níveis |
-| Imports mortos / código não usado | LOW | imports sem uso, variáveis exportadas sem consumo | Remover ou consolidar |
+| Imports mortos, exports órfãos e código legado não usado | LOW | imports sem uso, variáveis exportadas sem consumo, arquivos fora do caminho de execução | Remover o código morto ou descontinuá-lo explicitamente |
 
 ## APIs depreciadas: exemplos a procurar
 
@@ -34,8 +34,8 @@ Cada finding deve ter:
 - `datetime.utcnow()` quando o projeto já usa timestamps com fuso: preferir `datetime.now(timezone.utc)`.
 - `new Buffer()` no Node: preferir `Buffer.from()`.
 - APIs de framework marcadas como legacy no release atual: trocá-las pela alternativa documentada mais nova.
+- Arquivos legados que não são mais importados nem alcançados pelo bootstrap, como entrypoints antigos, devem ser removidos se nenhuma referência viva depender deles.
 
 ## Regra prática
 
 Se a API é antiga, mas ainda funciona, marque como **MEDIUM**. Se a API antiga também expõe dados, fragiliza segurança ou quebra compatibilidade, eleve para **HIGH**.
-

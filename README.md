@@ -488,6 +488,40 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
 | MEDIUM | `db.create_all()` no boot sem migrações | `app.py:30-31` | O schema é criado automaticamente, sem estratégia de evolução. |
 | LOW | Imports e dependências internas não utilizadas | `app.py:7`, `models/task.py:1-3`, `routes/task_routes.py:7`, `utils/helpers.py:3-7` | Sinal de código sobrando e manutenção pouco rigorosa. |
 | LOW | Serviço de notificação com credenciais hardcoded | `services/notification_service.py:4-18` | A configuração sensível fica presa no source e dificulta troca de ambiente. |
+
+## Construção da Skill
+
+### Decisões de Design
+
+- Estruturei a skill em 3 fases sequenciais para impedir refatoração sem evidência: primeiro entender a stack, depois auditar com base em sinais concretos e só então alterar o código.
+- Separei o conhecimento em arquivos de referência pequenos e focados para não inflar o `SKILL.md` e para manter a skill fácil de copiar entre projetos e linguagens.
+- Usei um template de relatório único para garantir consistência entre os 3 projetos, com severidade, arquivo, linhas exatas, impacto e recomendação.
+- Modelei a Fase 3 como transformação guiada por achados da Fase 2, não como reorganização genérica. Isso evita refatoração cosmética.
+- Incluí validação de boot e endpoints como requisito final para garantir que a skill não "melhore" a arquitetura quebrando o comportamento observável.
+
+### Anti-patterns Incluídos
+
+- Segurança: SQL injection, credenciais hardcoded, execução arbitrária de comandos/SQL, senha em texto puro ou hash fraco, endpoints destrutivos sem proteção.
+- Arquitetura: God Class / Controller gordo, estado global mutável, validação duplicada, N+1 queries e uso indevido de APIs depreciadas.
+- Manutenibilidade: logging com `print`, imports mortos, exports não consumidos e arquivos legados fora do caminho de execução.
+- O catálogo trata código não usado como anti-pattern porque ele aumenta ruído, induz confusão sobre o fluxo real e costuma sobreviver a refatorações incompletas.
+- No `ecommerce-api-legacy`, isso é especialmente importante porque o `AppManager.js` original continua no repositório, mas não faz mais parte do bootstrap. A Fase 3 deve removê-lo ou descontinuá-lo explicitamente depois de confirmar que não há mais referências.
+
+### Como Garanti a Agnosticidade de Tecnologia
+
+- As heurísticas procuram linguagem e framework por sinais universais: extensões, dependências, pontos de entrada e padrões de importação, em vez de nomes fixos de projeto.
+- O catálogo de anti-patterns descreve comportamento, não framework. Assim, o mesmo sinal serve para Flask, Express ou qualquer backend semelhante.
+- A skill não assume MVC pronto; ela identifica a arquitetura real e só então propõe o destino em camadas.
+- O playbook usa transformações conceituais, como extrair configuração, separar rotas, centralizar validação e remover código morto, que se adaptam a stacks diferentes.
+- A prova de agnosticidade vem dos 3 projetos: um monolito Flask, um Express com legado e um Flask parcialmente organizado.
+
+### Desafios Encontrados
+
+- O `code-smells-project` exigiu lidar com um monolito muito concentrado, com riscos de segurança e acoplamento forte.
+- O `ecommerce-api-legacy` exigiu distinguir código realmente usado de legado abandonado, evitando deixar arquivos antigos como se fossem parte da arquitetura viva.
+- O `task-manager-api` mostrou que um projeto parcialmente organizado ainda pode esconder problemas reais de segurança, repetição de lógica e código sobrando.
+- O maior cuidado foi manter a Fase 3 orientada por evidência, para não remover ou mover arquivos que ainda fossem parte do fluxo de execução.
+
 ## Resultados
 
 ### Projeto 1 - `code-smells-project`
@@ -579,3 +613,34 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
   - `/reports/summary` -> `200`
   - `/categories` -> `200`
 - O projeto continuou respondendo normalmente após a refatoração, com a remoção dos vazamentos mais críticos.
+
+## Como Executar
+
+### Pré-requisitos
+
+- Ter o Codex instalado e configurado para operar no workspace do repositório.
+- Ter a skill disponível no caminho esperado pelo Codex, por exemplo `code-smells-project/.codex/skills/refactor-arch/`.
+- Abrir cada projeto na raiz correta antes de invocar a skill.
+- Garantir acesso de escrita ao repositório, porque a Fase 3 faz alterações reais no código.
+
+### Invocação por Projeto
+
+```bash
+# Projeto 1
+cd code-smells-project
+codex "/refactor-arch"
+
+# Projeto 2
+cd ../ecommerce-api-legacy
+codex "/refactor-arch"
+
+# Projeto 3
+cd ../task-manager-api
+codex "/refactor-arch"
+```
+
+### Validação
+
+- Conferir se a Fase 1 identificou linguagem, framework, domínio e entrypoint corretamente.
+- Conferir se a Fase 2 gerou findings com arquivo e linhas exatas e pediu confirmação antes de editar.
+- Conferir se a Fase 3 preservou o boot e os endpoints principais.

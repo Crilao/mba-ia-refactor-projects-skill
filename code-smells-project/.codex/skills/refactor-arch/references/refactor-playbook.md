@@ -11,6 +11,7 @@
 7. Mutable global state
 8. Destructive endpoint without protection
 9. Deprecated API usage
+10. Dead code / legacy files
 
 ## SQL concatenation
 
@@ -175,6 +176,28 @@ After:
 user = db.session.get(User, user_id)
 ```
 
+## Dead code / legacy files
+
+Before:
+
+```js
+// app.js no longer imports this file, but the old entrypoint still sits in the repo.
+const AppManager = require('./AppManager');
+```
+
+After:
+
+```js
+// Remove the legacy file if the bootstrap no longer reaches it.
+// If it still contains live behavior, move that behavior into the new layers first.
+```
+
+Rules:
+
+- Confirm the file is not part of the bootstrap or import graph before deleting it.
+- Prefer removing dead code over keeping it "just in case".
+- If the file is still needed, extract the live responsibilities into the new architecture and delete the obsolete shell.
+
 ## How to apply the playbook
 
 - Fix the root cause, not just the symptom.
@@ -182,4 +205,5 @@ user = db.session.get(User, user_id)
 - Refactor in small verifiable steps.
 - Validate each change with boot and the main endpoints.
 - If Phase 2 found a smell, Phase 3 must apply the matching transformation before any cosmetic cleanup.
+- Remove dead code and legacy files once their lack of references is proven; do not leave obsolete entrypoints behind.
 - Re-run the audit after each change set to confirm critical findings are gone.
