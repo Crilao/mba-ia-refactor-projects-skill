@@ -38,4 +38,3 @@ Cada finding deve ter:
 ## Regra prática
 
 Se a API é antiga, mas ainda funciona, marque como **MEDIUM**. Se a API antiga também expõe dados, fragiliza segurança ou quebra compatibilidade, eleve para **HIGH**.
-

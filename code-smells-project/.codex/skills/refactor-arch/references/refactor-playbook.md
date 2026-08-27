@@ -11,7 +11,6 @@
 7. Mutable global state
 8. Destructive endpoint without protection
 9. Deprecated API usage
-10. Dead code / legacy files
 
 ## SQL concatenation
 
@@ -162,6 +161,58 @@ def delete_user(id):
     ...
 ```
 
+Express equivalent:
+
+Before:
+
+```js
+app.delete('/api/users/:id', controllers.deleteUser);
+```
+
+After:
+
+```js
+// middlewares/requireAdmin.js
+const crypto = require('crypto');
+const config = require('../config');
+
+function hasMatchingToken(providedToken, expectedToken) {
+  const provided = Buffer.from(providedToken || '');
+  const expected = Buffer.from(expectedToken || '');
+
+  return provided.length === expected.length
+    && provided.length > 0
+    && crypto.timingSafeEqual(provided, expected);
+}
+
+function requireAdmin(req, res, next) {
+  if (!config.adminToken) {
+    return res.status(503).json({ error: 'Admin authorization is not configured' });
+  }
+
+  const [scheme, token] = (req.get('authorization') || '').split(' ');
+  if (scheme !== 'Bearer' || !hasMatchingToken(token, config.adminToken)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  return next();
+}
+
+module.exports = requireAdmin;
+```
+
+```js
+// routes.js
+const requireAdmin = require('./middlewares/requireAdmin');
+
+app.delete('/api/users/:id', requireAdmin, controllers.deleteUser);
+```
+
+- Reuse the same middleware for other administrative routes only after confirming they need the same authorization policy.
+- Read the expected token from configuration; do not duplicate a fallback token in the middleware.
+- When the configured token is absent, fail closed. Do not let an empty request header authorize the action.
+- Validate both `DELETE /api/users/:id` without or with an invalid `Authorization` header (`401`) and with `Authorization: Bearer <ADMIN_TOKEN>` (the original successful response). Assert the deletion service is not reached in the unauthorized case.
+
 ## Deprecated API usage
 
 Before:
@@ -176,28 +227,6 @@ After:
 user = db.session.get(User, user_id)
 ```
 
-## Dead code / legacy files
-
-Before:
-
-```js
-// app.js no longer imports this file, but the old entrypoint still sits in the repo.
-const AppManager = require('./AppManager');
-```
-
-After:
-
-```js
-// Remove the legacy file if the bootstrap no longer reaches it.
-// If it still contains live behavior, move that behavior into the new layers first.
-```
-
-Rules:
-
-- Confirm the file is not part of the bootstrap or import graph before deleting it.
-- Prefer removing dead code over keeping it "just in case".
-- If the file is still needed, extract the live responsibilities into the new architecture and delete the obsolete shell.
-
 ## How to apply the playbook
 
 - Fix the root cause, not just the symptom.
@@ -205,5 +234,5 @@ Rules:
 - Refactor in small verifiable steps.
 - Validate each change with boot and the main endpoints.
 - If Phase 2 found a smell, Phase 3 must apply the matching transformation before any cosmetic cleanup.
-- Remove dead code and legacy files once their lack of references is proven; do not leave obsolete entrypoints behind.
-- Re-run the audit after each change set to confirm critical findings are gone.
+- Maintain a remediation checklist that links each Phase 2 finding to its code change and validation result.
+- Re-run the audit after each change set to confirm CRITICAL and HIGH findings are gone or explicitly deferred by the user.

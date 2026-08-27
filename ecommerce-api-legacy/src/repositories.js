@@ -30,20 +30,23 @@ async function createAuditLog(action) {
   return db.run("INSERT INTO audit_logs (action, created_at) VALUES (?, datetime('now'))", [action]);
 }
 
-async function getCourses() {
-  return db.all('SELECT * FROM courses', []);
-}
-
-async function getEnrollmentsByCourse(courseId) {
-  return db.all('SELECT * FROM enrollments WHERE course_id = ?', [courseId]);
-}
-
-async function findUserBasicById(userId) {
-  return db.get('SELECT name, email FROM users WHERE id = ?', [userId]);
-}
-
-async function findPaymentByEnrollment(enrollmentId) {
-  return db.get('SELECT amount, status FROM payments WHERE enrollment_id = ?', [enrollmentId]);
+async function getFinancialReportRows() {
+  return db.all(
+    `
+      SELECT
+        courses.id AS course_id,
+        courses.title AS course_title,
+        enrollments.id AS enrollment_id,
+        users.name AS user_name,
+        payments.amount AS payment_amount,
+        payments.status AS payment_status
+      FROM courses
+      LEFT JOIN enrollments ON enrollments.course_id = courses.id
+      LEFT JOIN users ON users.id = enrollments.user_id
+      LEFT JOIN payments ON payments.enrollment_id = enrollments.id
+      ORDER BY courses.id, enrollments.id
+    `
+  );
 }
 
 async function deleteUser(userId) {
@@ -58,10 +61,6 @@ module.exports = {
   createEnrollment,
   createPayment,
   createAuditLog,
-  getCourses,
-  getEnrollmentsByCourse,
-  findUserBasicById,
-  findPaymentByEnrollment,
+  getFinancialReportRows,
   deleteUser,
 };
-

@@ -1,10 +1,17 @@
+const fs = require('fs');
+const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const config = require('./config');
+const { hashPassword } = require('./utils');
 
 let db;
 
 function getDb() {
   if (!db) {
-    db = new sqlite3.Database(':memory:');
+    if (config.databasePath !== ':memory:') {
+      fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
+    }
+    db = new sqlite3.Database(config.databasePath);
   }
   return db;
 }
@@ -49,6 +56,19 @@ function exec(sql) {
   });
 }
 
+function closeDb() {
+  if (!db) return Promise.resolve();
+
+  const database = db;
+  db = undefined;
+  return new Promise((resolve, reject) => {
+    database.close((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
+
 async function initDb() {
   await exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -86,7 +106,15 @@ async function seedDb() {
   const existingUsers = await get('SELECT COUNT(*) AS count FROM users');
   if (existingUsers.count > 0) return;
 
-  await run("INSERT INTO users (name, email, pass) VALUES (?, ?, ?)", ['Leonan', 'leonan@fullcycle.com.br', '123']);
+  if (!config.seedUserPassword) {
+    throw new Error('SEED_USER_PASSWORD is required to seed the database');
+  }
+
+  await run("INSERT INTO users (name, email, pass) VALUES (?, ?, ?)", [
+    'Leonan',
+    'leonan@fullcycle.com.br',
+    hashPassword(config.seedUserPassword),
+  ]);
   await run(
     "INSERT INTO courses (title, price, active) VALUES (?, ?, ?), (?, ?, ?)",
     ['Clean Architecture', 997.0, 1, 'Docker', 497.0, 1]
@@ -100,7 +128,7 @@ module.exports = {
   run,
   get,
   all,
+  closeDb,
   initDb,
   seedDb,
 };
-

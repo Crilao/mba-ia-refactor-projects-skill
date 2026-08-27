@@ -1,10 +1,9 @@
 const config = require('./config');
 const createApp = require('./appFactory');
-const { initDb, seedDb } = require('./database');
+const { initDb } = require('./database');
 
 async function bootstrap() {
   await initDb();
-  await seedDb();
 
   const app = createApp();
   app.listen(config.port, () => {
@@ -16,4 +15,3 @@ bootstrap().catch((error) => {
   console.error('Falha ao iniciar a aplicação:', error);
   process.exit(1);
 });
-

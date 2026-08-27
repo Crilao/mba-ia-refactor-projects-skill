@@ -6,10 +6,13 @@ LMS API (com fluxo de checkout) em Node.js/Express usada como entrada do desafio
 
 ```bash
 npm install
-npm start
+SEED_USER_PASSWORD="uma-senha-forte" npm run seed
+ADMIN_TOKEN="admin-token-seguro" npm start
 ```
 
-A aplicação sobe em `http://localhost:3000`. O banco SQLite é em memória e já carrega seeds automaticamente no boot.
+A aplicação sobe em `http://localhost:3000`. Por padrão, o banco SQLite é persistido em `data/ecommerce.sqlite`; altere o caminho com `DATABASE_PATH`. O seed é uma operação explícita e requer `SEED_USER_PASSWORD` para não gravar uma senha padrão no código.
+
+Os endpoints administrativos exigem `Authorization: Bearer <ADMIN_TOKEN>`.
 
 Exemplos de requisições estão em `api.http`.
 

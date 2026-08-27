@@ -1,5 +1,5 @@
 const repo = require('./repositories');
-const { hashPassword, logAndCache, globalCache } = require('./utils');
+const { hashPassword } = require('./utils');
 
 async function processCheckout({ usr, eml, pwd, c_id: courseId, card }) {
   if (!usr || !eml || !courseId || !card) {
@@ -31,37 +31,35 @@ async function processCheckout({ usr, eml, pwd, c_id: courseId, card }) {
   const enrollmentId = await repo.createEnrollment(userId, courseId);
   await repo.createPayment(enrollmentId, course.price, paymentStatus);
   await repo.createAuditLog(`Checkout curso ${courseId} por ${userId}`);
-  logAndCache(`last_checkout_${userId}`, course.title);
 
   return { status: 200, body: { msg: 'Sucesso', enrollment_id: enrollmentId } };
 }
 
 async function getFinancialReport() {
-  const report = [];
-  const courses = await repo.getCourses();
+  const reportByCourse = new Map();
+  const rows = await repo.getFinancialReportRows();
 
-  for (const course of courses) {
-    const courseData = { course: course.title, revenue: 0, students: [] };
-    const enrollments = await repo.getEnrollmentsByCourse(course.id);
-
-    for (const enrollment of enrollments) {
-      const user = await repo.findUserBasicById(enrollment.user_id);
-      const payment = await repo.findPaymentByEnrollment(enrollment.id);
-
-      if (payment && payment.status === 'PAID') {
-        courseData.revenue += payment.amount;
-      }
-
-      courseData.students.push({
-        student: user ? user.name : 'Unknown',
-        paid: payment ? payment.amount : 0,
-      });
+  for (const row of rows) {
+    let course = reportByCourse.get(row.course_id);
+    if (!course) {
+      course = { course: row.course_title, revenue: 0, students: [] };
+      reportByCourse.set(row.course_id, course);
     }
 
-    report.push(courseData);
+    if (row.enrollment_id === null) continue;
+
+    const paid = row.payment_amount ?? 0;
+    if (row.payment_status === 'PAID') {
+      course.revenue += paid;
+    }
+
+    course.students.push({
+      student: row.user_name || 'Unknown',
+      paid,
+    });
   }
 
-  return report;
+  return [...reportByCourse.values()];
 }
 
 async function deleteUserAndKeepAudit(id) {
@@ -73,7 +71,4 @@ module.exports = {
   processCheckout,
   getFinancialReport,
   deleteUserAndKeepAudit,
-  logAndCache,
-  hashPassword,
-  globalCache,
 };
